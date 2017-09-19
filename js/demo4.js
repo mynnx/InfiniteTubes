@@ -197,7 +197,31 @@ Tunnel.prototype.updateCurve = function() {
   this.splineMesh.geometry.vertices = this.curve.getPoints(70);
 };
 
+Tunnel.prototype.updateJoystickValues = function() {
+  var gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads : []);
+  if (!gamepads.length) {
+    return;
+  }
+
+  var axis = 0;
+  console.log("Axis 3: ", gamepads[0].axes[6])
+
+  this.speed = (-1 * gamepads[0].axes[6] + 1) * 2;
+  if (gamepads[0].buttons[0].pressed) {
+    this.mousedown = true;
+  } else {
+    this.mousedown = false;
+  }
+
+  // input = [-1, -0.5,   0,      0.5, 1]
+  // output = [0, vw / 4, vw / 2, 3vw/4, 1vw];
+  this.mouse.target.x = ((gamepads[0].axes[0] + 1) / 2) * ww;
+  this.mouse.target.y = ((-1 * gamepads[0].axes[1] + 1) / 2) * wh;
+}
+
 Tunnel.prototype.render = function(time) {
+
+  this.updateJoystickValues();
 
   this.updateCameraPosition();
 
