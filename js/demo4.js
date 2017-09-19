@@ -2,12 +2,12 @@ var ww = window.innerWidth;
 var wh = window.innerHeight;
 var isMobile = ww < 500;
 
-function Tunnel(cell) {
+function Tunnel(cell, textures) {
   
   window.cell = cell.children[0];
   
   this.init();
-  this.createMesh();
+  this.createMesh(textures);
 
   this.handleEvents();
 
@@ -41,6 +41,10 @@ Tunnel.prototype.init = function() {
   var light = new THREE.HemisphereLight(0xe9eff2, 0x01010f, 1);
   this.scene.add(light);
 
+  // Add a directional light for the bump
+  var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.8 );
+  this.scene.add( directionalLight );
+
   this.addParticle();
 };
 
@@ -55,7 +59,7 @@ Tunnel.prototype.addParticle = function() {
   }
 };
 
-Tunnel.prototype.createMesh = function() {
+Tunnel.prototype.createMesh = function(textures) {
   var points = [];
   var i = 0;
   var geometry = new THREE.Geometry();
@@ -74,10 +78,19 @@ Tunnel.prototype.createMesh = function() {
   geometry.vertices = this.curve.getPoints(70);
   this.splineMesh = new THREE.Line(geometry, new THREE.LineBasicMaterial());
 
-  this.tubeMaterial = new THREE.MeshBasicMaterial({
+  this.tubeMaterial = new THREE.MeshStandardMaterial({
     side: THREE.BackSide,
-    color: 0x781002
+    map: textures.stone.texture,
+    bumpMap: textures.stoneBump.texture,
+    bumpScale: 0.0003
   });
+
+  this.tubeMaterial.map.wrapS = THREE.RepeatWrapping;
+  this.tubeMaterial.map.wrapT = THREE.RepeatWrapping;
+  this.tubeMaterial.map.repeat.set(10, 6);
+  this.tubeMaterial.bumpMap.wrapS = THREE.RepeatWrapping;
+  this.tubeMaterial.bumpMap.wrapT = THREE.RepeatWrapping;
+  this.tubeMaterial.bumpMap.repeat.set(30, 6);
 
   this.tubeGeometry = new THREE.TubeGeometry(this.curve, 70, 0.02, 30, false);
   this.tubeGeometry_o = this.tubeGeometry.clone();
@@ -197,6 +210,12 @@ Tunnel.prototype.updateCurve = function() {
   this.splineMesh.geometry.vertices = this.curve.getPoints(70);
 };
 
+Tunnel.prototype.updateMaterialOffset = function() {
+  // Update the offset of the material
+  console.log(this.speed, this.speed / 100);
+  this.tubeMaterial.map.offset.x += this.speed / 25;
+};
+
 Tunnel.prototype.updateJoystickValues = function() {
   var gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads : []);
   if (!gamepads.length) {
@@ -206,7 +225,7 @@ Tunnel.prototype.updateJoystickValues = function() {
 
   var gamepad = gamepads[0];
 
-  this.speed = (-1 * gamepad.axes[6] + 1) * 2;
+  this.speed = (-1 * gamepad.axes[6] + 1);
   if (gamepad.buttons[0].pressed) {
     this.mousedown = true;
   } else {
@@ -222,6 +241,8 @@ Tunnel.prototype.updateJoystickValues = function() {
 Tunnel.prototype.render = function(time) {
 
   this.updateJoystickValues();
+
+  this.updateMaterialOffset();
 
   this.updateCameraPosition();
 
@@ -311,14 +332,52 @@ Particle.prototype.update = function(tunnel) {
 };
 
 function init() {
+  var textures = null;
+  var objects = null;
 
+  function checkDone() {
+    if (textures && objects) {
+      window.tunnel = new Tunnel(objects, textures);
+    }
+  }
+  loadTextures(function(ts) { textures = ts; checkDone(); });
+  loadObjects(function(os) { objects = os; checkDone(); });
+}
+
+function loadObjects(callback) {
   var loader = new THREE.OBJLoader();
   loader.load(
     'img/demo4/blood_cell.obj',
-    function(obj) {
-      window.tunnel = new Tunnel(obj);
-    }
+    callback
   );
+}
+
+function loadTextures(callback) {
+  var textures = {
+    "stone": {
+      url: "img/demo1/stonePattern.jpg",
+      loaded: false
+    },
+    "stoneBump": {
+      url: "img/demo1/stonePatternBump.jpg",
+      loaded: false
+    }
+  };
+
+  var loader = new THREE.TextureLoader();
+  loader.crossOrigin = "Anonymous";
+  // Load all textures
+  for (var name in textures) {
+    (function(name) {
+      loader.load(textures[name].url, function(texture) {
+        textures[name].loaded = true;
+        textures[name].texture = texture;
+        if (Object.values(textures).every(function(t) { return t.loaded })) {
+          callback(textures);
+        }
+      });
+    })(name);
+  }
 }
 
 window.onload = init;
