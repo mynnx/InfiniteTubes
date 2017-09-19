@@ -203,11 +203,11 @@ Tunnel.prototype.updateJoystickValues = function() {
     return;
   }
 
-  var axis = 0;
-  console.log("Axis 3: ", gamepads[0].axes[6])
 
-  this.speed = (-1 * gamepads[0].axes[6] + 1) * 2;
-  if (gamepads[0].buttons[0].pressed) {
+  var gamepad = gamepads[0];
+
+  this.speed = (-1 * gamepad.axes[6] + 1) * 2;
+  if (gamepad.buttons[0].pressed) {
     this.mousedown = true;
   } else {
     this.mousedown = false;
@@ -268,6 +268,10 @@ function Particle(scene, burst) {
   var saturate = Math.floor(Math.random()*20 + 65);
   var light = burst ? 20 : 56;
   this.color = new THREE.Color("hsl(" + (Math.random() * range + offset) + ","+saturate+"%,"+light+"%)");
+  if (burst) {
+    var colorPalette = [0x9effb8, 0x89aee1, 0xd46ce7, 0xe9f259, 0x7cf4d3];
+    this.color = new THREE.Color(colorPalette[Math.floor(Math.random()*colorPalette.length)]);
+  }
   var mat = new THREE.MeshPhongMaterial({
     color: this.color,
     // shading: THREE.FlatShading
@@ -293,9 +297,6 @@ function Particle(scene, burst) {
   this.pos = new THREE.Vector3(0, 0, 0);
 };
 
-Particle.prototype.cube = new THREE.BoxBufferGeometry(1, 1, 1);
-Particle.prototype.sphere = new THREE.SphereBufferGeometry(1, 6, 6);
-Particle.prototype.icosahedron = new THREE.IcosahedronBufferGeometry(1, 0);
 Particle.prototype.update = function(tunnel) {
 
   this.percent += this.speed * (this.burst ? 1 : tunnel.speed);
