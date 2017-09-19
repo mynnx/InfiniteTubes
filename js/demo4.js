@@ -80,9 +80,9 @@ Tunnel.prototype.createMesh = function(textures) {
 
   this.tubeMaterial = new THREE.MeshStandardMaterial({
     side: THREE.BackSide,
-    map: textures.stone.texture,
-    bumpMap: textures.stoneBump.texture,
-    bumpScale: 0.0003
+    map: textures.microdots.texture,
+    bumpMap: textures.microdotsBump.texture,
+    bumpScale: 0.0005
   });
 
   this.tubeMaterial.map.wrapS = THREE.RepeatWrapping;
@@ -354,6 +354,14 @@ function loadObjects(callback) {
 
 function loadTextures(callback) {
   var textures = {
+    "microdots": {
+      url: "img/demo1/microdotsPattern.jpg",
+      loaded: false
+    },
+    "microdotsBump": {
+      url: "img/demo1/microdotsPatternBump.jpg",
+      loaded: false
+    },
     "stone": {
       url: "img/demo1/stonePattern.jpg",
       loaded: false
