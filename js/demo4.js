@@ -1,11 +1,13 @@
+/* global THREE:false, Power2:false, cell:false, TweenMax:false */
+
 var ww = window.innerWidth;
 var wh = window.innerHeight;
 var isMobile = ww < 500;
 
 function Tunnel(cell, textures) {
-  
+
   window.cell = cell.children[0];
-  
+
   this.init();
   this.createMesh(textures);
 
@@ -27,7 +29,7 @@ Tunnel.prototype.init = function() {
 
   this.renderer = new THREE.WebGLRenderer({
     antialias: true,
-    canvas: document.querySelector("#scene")
+    canvas: document.querySelector('#scene')
   });
   this.renderer.setSize(ww, wh);
 
@@ -64,7 +66,7 @@ Tunnel.prototype.createMesh = function(textures) {
   var i = 0;
   var geometry = new THREE.Geometry();
 
-  this.scene.remove(this.tubeMesh)
+  this.scene.remove(this.tubeMesh);
 
   for (i = 0; i < 5; i += 1) {
     points.push(new THREE.Vector3(0, 0, 2.5 * (i / 4)));
@@ -72,7 +74,7 @@ Tunnel.prototype.createMesh = function(textures) {
   points[4].y = -0.06;
 
   this.curve = new THREE.CatmullRomCurve3(points);
-  this.curve.type = "catmullrom";
+  this.curve.type = 'catmullrom';
 
   geometry = new THREE.Geometry();
   geometry.vertices = this.curve.getPoints(70);
@@ -162,7 +164,7 @@ Tunnel.prototype.onResize = function() {
 };
 
 Tunnel.prototype.onMouseMove = function(e) {
-  if (e.type === "mousemove") {
+  if (e.type === 'mousemove') {
     this.mouse.target.x = e.clientX;
     this.mouse.target.y = e.clientY;
   } else {
@@ -236,7 +238,7 @@ Tunnel.prototype.updateJoystickValues = function() {
   // output = [0, vw / 4, vw / 2, 3vw/4, 1vw];
   this.mouse.target.x = ((gamepads[0].axes[0] + 1) / 2) * ww;
   this.mouse.target.y = ((-1 * gamepads[0].axes[1] + 1) / 2) * wh;
-}
+};
 
 Tunnel.prototype.render = function(time) {
 
@@ -261,15 +263,15 @@ Tunnel.prototype.render = function(time) {
   if (this.mousedown) {
     if (time - this.prevTime > 20) {
       this.prevTime = time;
-      var particle = new Particle(this.scene, true)
+      var particle = new Particle(this.scene, true);
       this.particles.push(particle);
       this.particlesContainer.add(particle.mesh);
       if (!isMobile) {
-        particle = new Particle(this.scene, true)
+        particle = new Particle(this.scene, true);
         this.particles.push(particle);
         this.particlesContainer.add(particle.mesh);
 
-        particle = new Particle(this.scene, true)
+        particle = new Particle(this.scene, true);
         this.particles.push(particle);
         this.particlesContainer.add(particle.mesh);
       }
@@ -288,7 +290,7 @@ function Particle(scene, burst) {
   var offset = burst ? 200 : 350;
   var saturate = Math.floor(Math.random()*20 + 65);
   var light = burst ? 20 : 56;
-  this.color = new THREE.Color("hsl(" + (Math.random() * range + offset) + ","+saturate+"%,"+light+"%)");
+  this.color = new THREE.Color('hsl(' + (Math.random() * range + offset) + ','+saturate+'%,'+light+'%)');
   if (burst) {
     var colorPalette = [0x9effb8, 0x89aee1, 0xd46ce7, 0xe9f259, 0x7cf4d3];
     this.color = new THREE.Color(colorPalette[Math.floor(Math.random()*colorPalette.length)]);
@@ -316,7 +318,7 @@ function Particle(scene, burst) {
   this.rotate = new THREE.Vector3(-Math.random() * 0.1 + 0.01, 0, Math.random() * 0.01);
 
   this.pos = new THREE.Vector3(0, 0, 0);
-};
+}
 
 Particle.prototype.update = function(tunnel) {
 
@@ -354,33 +356,33 @@ function loadObjects(callback) {
 
 function loadTextures(callback) {
   var textures = {
-    "microdots": {
-      url: "img/demo1/microdotsPattern.jpg",
+    'microdots': {
+      url: 'img/demo1/microdotsPattern.jpg',
       loaded: false
     },
-    "microdotsBump": {
-      url: "img/demo1/microdotsPatternBump.jpg",
+    'microdotsBump': {
+      url: 'img/demo1/microdotsPatternBump.jpg',
       loaded: false
     },
-    "stone": {
-      url: "img/demo1/stonePattern.jpg",
+    'stone': {
+      url: 'img/demo1/stonePattern.jpg',
       loaded: false
     },
-    "stoneBump": {
-      url: "img/demo1/stonePatternBump.jpg",
+    'stoneBump': {
+      url: 'img/demo1/stonePatternBump.jpg',
       loaded: false
     }
   };
 
   var loader = new THREE.TextureLoader();
-  loader.crossOrigin = "Anonymous";
+  loader.crossOrigin = 'Anonymous';
   // Load all textures
   for (var name in textures) {
     (function(name) {
       loader.load(textures[name].url, function(texture) {
         textures[name].loaded = true;
         textures[name].texture = texture;
-        if (Object.values(textures).every(function(t) { return t.loaded })) {
+        if (Object.values(textures).every(function(t) { return t.loaded; })) {
           callback(textures);
         }
       });
