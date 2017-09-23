@@ -185,7 +185,7 @@ Tunnel.prototype.updateMaterialOffset = function() {
 
 Tunnel.prototype.updateJoystickValues = function() {
   var gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads : []);
-  if (!gamepads.length) {
+  if (!gamepads[0]) {
     return;
   }
 
