@@ -1,8 +1,9 @@
-/* global THREE:false, Power2:false, cell:false, TweenMax:false */
+/* global _:false, THREE:false, Power2:false, cell:false, TweenMax:false */
 
 var ww = window.innerWidth;
 var wh = window.innerHeight;
 var isMobile = ww < 500;
+var WACKY_COLORS = [0x9effb8, 0x89aee1, 0xd46ce7, 0xe9f259, 0x7cf4d3];
 
 function Tunnel(cell, textures) {
 
@@ -19,6 +20,7 @@ function Tunnel(cell, textures) {
 Tunnel.prototype.init = function() {
 
   this.speed = 1;
+  this.currentColor = 0;
   this.prevTime = 0;
 
   this.mouse = {
@@ -96,9 +98,9 @@ Tunnel.prototype.createMesh = function(textures) {
 
   this.tubeGeometry = new THREE.TubeGeometry(this.curve, 70, 0.02, 30, false);
   this.tubeGeometry_o = this.tubeGeometry.clone();
-  this.tubeMesh = new THREE.Mesh(this.tubeGeometry, this.tubeMaterial);
+  var tubeMesh = new THREE.Mesh(this.tubeGeometry, this.tubeMaterial);
 
-  this.scene.add(this.tubeMesh);
+  this.scene.add(tubeMesh);
 
 };
 
@@ -214,7 +216,6 @@ Tunnel.prototype.updateCurve = function() {
 
 Tunnel.prototype.updateMaterialOffset = function() {
   // Update the offset of the material
-  console.log(this.speed, this.speed / 100);
   this.tubeMaterial.map.offset.x += this.speed / 25;
 };
 
@@ -228,17 +229,30 @@ Tunnel.prototype.updateJoystickValues = function() {
   var gamepad = gamepads[0];
 
   this.speed = (-1 * gamepad.axes[6] + 1);
-  if (gamepad.buttons[0].pressed) {
-    this.mousedown = true;
-  } else {
-    this.mousedown = false;
-  }
+  this.mousedown = gamepad.buttons[0].pressed;
+  this.updateTunnelColor(gamepad.buttons[11].pressed);
 
   // input = [-1, -0.5,   0,      0.5, 1]
   // output = [0, vw / 4, vw / 2, 3vw/4, 1vw];
   this.mouse.target.x = ((gamepads[0].axes[0] + 1) / 2) * ww;
   this.mouse.target.y = ((-1 * gamepads[0].axes[1] + 1) / 2) * wh;
 };
+
+Tunnel.prototype.updateTunnelColor = _.throttle(function (shouldSwitch) {
+  var availableColors = WACKY_COLORS.map(function (hex) {
+    var color = new THREE.Color(hex);
+    color.addScalar(-0.25);
+    return color;
+  });
+  if (shouldSwitch) {
+    var nextColor = availableColors[this.currentColor++ % availableColors.length];
+    TweenMax.to(this.tubeMaterial.color, 1, {
+      r: nextColor.r,
+      g: nextColor.g,
+      b: nextColor.b,
+    });
+  }
+}, 500);
 
 Tunnel.prototype.render = function(time) {
 
@@ -292,8 +306,7 @@ function Particle(scene, burst) {
   var light = burst ? 20 : 56;
   this.color = new THREE.Color('hsl(' + (Math.random() * range + offset) + ','+saturate+'%,'+light+'%)');
   if (burst) {
-    var colorPalette = [0x9effb8, 0x89aee1, 0xd46ce7, 0xe9f259, 0x7cf4d3];
-    this.color = new THREE.Color(colorPalette[Math.floor(Math.random()*colorPalette.length)]);
+    this.color = new THREE.Color(WACKY_COLORS[Math.floor(Math.random()*WACKY_COLORS.length)]);
   }
   var mat = new THREE.MeshPhongMaterial({
     color: this.color,
