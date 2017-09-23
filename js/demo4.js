@@ -110,48 +110,12 @@ Tunnel.prototype.handleEvents = function() {
   document.body.addEventListener('mousemove', this.onMouseMove.bind(this), false);
   document.body.addEventListener('touchmove', this.onMouseMove.bind(this), false);
 
-  document.body.addEventListener('touchstart', this.onMouseDown.bind(this), false);
-  document.body.addEventListener('mousedown', this.onMouseDown.bind(this), false);
-
-  document.body.addEventListener('mouseup', this.onMouseUp.bind(this), false);
-  document.body.addEventListener('mouseleave', this.onMouseUp.bind(this), false);
-  document.body.addEventListener('touchend', this.onMouseUp.bind(this), false);
-  window.addEventListener('mouseout', this.onMouseUp.bind(this), false);
+  document.body.addEventListener('mousedown', this.setMouseDown.bind(this, true), false);
+  document.body.addEventListener('mouseup', this.setMouseDown.bind(this, false), false);
 };
 
-Tunnel.prototype.onMouseDown = function() {
-  this.mousedown = true;
-  TweenMax.to(this.scene.fog.color, 0.6, {
-    r: 1,
-    g: 1,
-    b: 1
-  });
-  TweenMax.to(this.tubeMaterial.color, 0.6, {
-    r: 0,
-    g: 0,
-    b: 0
-  });
-  TweenMax.to(this, 1.5, {
-    speed: 0.1,
-    ease: Power2.easeInOut
-  });
-};
-Tunnel.prototype.onMouseUp = function() {
-  this.mousedown = false;
-  TweenMax.to(this.scene.fog.color, 0.6, {
-    r: 0,
-    g: 0,
-    b: 0
-  });
-  TweenMax.to(this.tubeMaterial.color, 0.6, {
-    r: 0.47,
-    g: 0.06,
-    b: 0
-  });
-  TweenMax.to(this, 0.6, {
-    speed: 1,
-    ease: Power2.easeIn
-  });
+Tunnel.prototype.setMouseDown = function(setTo) {
+  this.mouseDown = setTo;
 };
 
 Tunnel.prototype.onResize = function() {
@@ -229,7 +193,7 @@ Tunnel.prototype.updateJoystickValues = function() {
   var gamepad = gamepads[0];
 
   this.speed = (-1 * gamepad.axes[6] + 1);
-  this.mousedown = gamepad.buttons[0].pressed;
+  this.mouseDown = gamepad.buttons[0].pressed;
   this.updateTunnelColor(gamepad.buttons[11].pressed);
 
   // input = [-1, -0.5,   0,      0.5, 1]
@@ -255,13 +219,9 @@ Tunnel.prototype.updateTunnelColor = _.throttle(function (shouldSwitch) {
 }, 500);
 
 Tunnel.prototype.render = function(time) {
-
   this.updateJoystickValues();
-
   this.updateMaterialOffset();
-
   this.updateCameraPosition();
-
   this.updateCurve();
 
   for (var i = 0; i < this.particles.length; i++) {
@@ -274,7 +234,7 @@ Tunnel.prototype.render = function(time) {
   }
 
   // When mouse down, add a lot of shapes
-  if (this.mousedown) {
+  if (this.triggerPressed || this.mouseDown) {
     if (time - this.prevTime > 20) {
       this.prevTime = time;
       var particle = new Particle(this.scene, true);
