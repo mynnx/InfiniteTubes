@@ -194,7 +194,8 @@ Tunnel.prototype.updateJoystickValues = function() {
 
   this.speed = (-1 * gamepad.axes[6] + 1);
   this.mouseDown = gamepad.buttons[0].pressed;
-  this.updateTunnelColor(gamepad.buttons[11].pressed);
+  this.debugReload(gamepad.buttons[7].pressed);
+  this.updateColor(gamepad.buttons[11].pressed);
 
   // input = [-1, -0.5,   0,      0.5, 1]
   // output = [0, vw / 4, vw / 2, 3vw/4, 1vw];
@@ -202,7 +203,17 @@ Tunnel.prototype.updateJoystickValues = function() {
   this.mouse.target.y = ((-1 * gamepads[0].axes[1] + 1) / 2) * wh;
 };
 
-Tunnel.prototype.updateTunnelColor = _.throttle(function (shouldSwitch) {
+Tunnel.prototype.debugReload = (function() {
+  var hasBeenFalse = false;
+  return function(shouldReload) {
+    hasBeenFalse = hasBeenFalse || shouldReload === false;
+    if (shouldReload && hasBeenFalse) {
+      document.location.reload();
+    }
+  };
+})();
+
+Tunnel.prototype.updateColor = _.throttle(function (shouldSwitch) {
   var availableColors = WACKY_COLORS.map(function (hex) {
     var color = new THREE.Color(hex);
     color.addScalar(-0.25);
@@ -214,6 +225,7 @@ Tunnel.prototype.updateTunnelColor = _.throttle(function (shouldSwitch) {
       r: nextColor.r,
       g: nextColor.g,
       b: nextColor.b,
+      ease: Power2.easeInOut
     });
   }
 }, 500);
