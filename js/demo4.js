@@ -47,9 +47,47 @@ Tunnel.prototype.init = function(objects) {
 
   // Add a directional light for the bump
   var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.8 );
-  this.scene.add( directionalLight );
+  this.scene.add(directionalLight);
 
   this.addParticle();
+  this.addBoss(objects.virus.object);
+};
+
+function Boss(object) {
+  var radius = Math.random() * 0.003 + 0.0003;
+  var geom = object.children[0].geometry;
+  var mat = new THREE.MeshPhongMaterial({
+    color: new THREE.Color(WACKY_COLORS[Math.floor(Math.random()*WACKY_COLORS.length)])
+    // shading: THREE.FlatShading
+  });
+
+  this.mesh = new THREE.Mesh(geom, mat);
+  var scale = radius / 14;
+  this.mesh.scale.set(scale, scale, scale);
+  this.mesh.position.set(0, 0, 0.55);
+
+  this.offset = new THREE.Vector3(0, 0, 0);
+  this.speed = Math.random() * 0.004 + 0.0002;
+  this.rotate = new THREE.Vector3(-Math.random() * 0.1 + 0.01, 0, Math.random() * 0.01);
+
+  this.pos = new THREE.Vector3(0, 0, 0);
+  return this;
+}
+// Boss.prototype = Particle.prototype;
+Boss.prototype.update = function(tunnel) {
+  this.percent += this.speed * (this.burst ? 1 : tunnel.speed);
+
+  this.pos = tunnel.curve.getPoint(1 - (tunnel.speed % 1)).add(this.offset);
+  this.mesh.position.x = this.pos.x;
+  this.mesh.position.y = this.pos.y;
+  this.mesh.position.z = this.pos.z;
+}
+
+Tunnel.prototype.addBoss = function(object) {
+  this.boss = new Boss(object);
+  this.offset = new THREE.Vector3((Math.random() - 0.5) * 0.025, (Math.random() - 0.5) * 0.025, 0);
+  this.boss.percent = 0.1;
+  this.scene.add(this.boss.mesh);
 };
 
 Tunnel.prototype.addParticle = function() {
@@ -232,6 +270,7 @@ Tunnel.prototype.render = function(time) {
   this.updateMaterialOffset();
   this.updateCameraPosition();
   this.updateCurve();
+  this.boss.update(this);
 
   for (var i = 0; i < this.particles.length; i++) {
     this.particles[i].update(this);
