@@ -5,11 +5,11 @@ var wh = window.innerHeight;
 var isMobile = ww < 500;
 var WACKY_COLORS = [0x9effb8, 0x89aee1, 0xd46ce7, 0xe9f259, 0x7cf4d3];
 
-function Tunnel(cell, textures) {
+function Tunnel(objects, textures) {
 
-  window.cell = cell.children[0];
+  window.cell = objects.cell.object.children[0];
 
-  this.init();
+  this.init(objects);
   this.createMesh(textures);
 
   this.handleEvents();
@@ -17,7 +17,7 @@ function Tunnel(cell, textures) {
   window.requestAnimationFrame(this.render.bind(this));
 }
 
-Tunnel.prototype.init = function() {
+Tunnel.prototype.init = function(objects) {
 
   this.speed = 1;
   this.currentColor = 0;
@@ -68,8 +68,6 @@ Tunnel.prototype.createMesh = function(textures) {
   var i = 0;
   var geometry = new THREE.Geometry();
 
-  this.scene.remove(this.tubeMesh);
-
   for (i = 0; i < 5; i += 1) {
     points.push(new THREE.Vector3(0, 0, 2.5 * (i / 4)));
   }
@@ -101,7 +99,6 @@ Tunnel.prototype.createMesh = function(textures) {
   var tubeMesh = new THREE.Mesh(this.tubeGeometry, this.tubeMaterial);
 
   this.scene.add(tubeMesh);
-
 };
 
 Tunnel.prototype.handleEvents = function() {
@@ -284,12 +281,16 @@ function Particle(scene, burst) {
     color: this.color,
     // shading: THREE.FlatShading
   });
+
+  // Blood cells are slightly different sizes and we also
+  // make them slightly bumpy
   this.mesh = new THREE.Mesh(geom, mat);
   this.mesh.scale.set(radius, radius, radius);
   this.mesh.scale.x += (Math.random()-0.5)*0.001;
   this.mesh.scale.y += (Math.random()-0.5)*0.001;
   this.mesh.scale.z += (Math.random()-0.5)*0.001;
   this.mesh.position.set(0, 0, 1.5);
+
   this.percent = burst ? 0.2 : Math.random();
   this.burst = burst ? true : false;
   this.offset = new THREE.Vector3((Math.random() - 0.5) * 0.025, (Math.random() - 0.5) * 0.025, 0);
@@ -332,11 +333,29 @@ function init() {
 }
 
 function loadObjects(callback) {
+  var objects = {
+    virus: {
+      url: 'img/demo4/virus.obj',
+      loaded: false
+    },
+    cell: {
+      url: 'img/demo4/blood_cell.obj',
+      loaded: false
+    }
+  };
+
   var loader = new THREE.OBJLoader();
-  loader.load(
-    'img/demo4/blood_cell.obj',
-    callback
-  );
+  for (var name in objects) {
+    (function(name) {
+      loader.load(objects[name].url, function(object) {
+        objects[name].loaded = true;
+        objects[name].object = object;
+        if (Object.values(objects).every(function(t) { return t.loaded; })) {
+          callback(objects);
+        }
+      });
+    })(name);
+  }
 }
 
 function loadTextures(callback) {
