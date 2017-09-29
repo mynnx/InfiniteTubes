@@ -12,10 +12,7 @@ function Scene(objects, textures) {
   this.init(objects);
   this.tunnel = new Tunnel(
     this.scene,
-    {
-      texture: textures.microdots.texture,
-      bump: textures.microdotsBump.texture
-    }
+    textures
   );
 
   this.handleEvents();
@@ -24,9 +21,6 @@ function Scene(objects, textures) {
 }
 
 Scene.prototype.init = function(objects) {
-
-  this.prevTime = 0;
-
   this.mouse = {
     position: new THREE.Vector2(ww * 0.5, wh * 0.7),
     ratio: new THREE.Vector2(0, 0),
@@ -85,11 +79,13 @@ Scene.prototype.addParticle = function() {
   }
 };
 
-function Tunnel(scene, texture) {
+function Tunnel(scene, textures) {
   this.scene = scene;
+  this.textures = textures;
   this.speed = 0.5;
   this.currentColor = 0;
-  this.createMesh(texture);
+  this.currentTexture = 0;
+  this.createMesh(textures[0]);
 }
 
 Tunnel.prototype.createMesh = function(texture) {
@@ -109,6 +105,16 @@ Tunnel.prototype.createMesh = function(texture) {
   geometry.vertices = this.curve.getPoints(70);
   this.splineMesh = new THREE.Line(geometry, new THREE.LineBasicMaterial());
 
+  this.setMaterial(texture);
+
+  this.tubeGeometry = new THREE.TubeGeometry(this.curve, 70, 0.02, 30, false);
+  this.tubeGeometry_o = this.tubeGeometry.clone();
+  this.tubeMesh = new THREE.Mesh(this.tubeGeometry, this.tubeMaterial);
+
+  this.scene.add(this.tubeMesh);
+};
+
+Tunnel.prototype.setMaterial = function(texture) {
   this.tubeMaterial = new THREE.MeshStandardMaterial({
     side: THREE.BackSide,
     map: texture.texture,
@@ -122,13 +128,15 @@ Tunnel.prototype.createMesh = function(texture) {
   this.tubeMaterial.bumpMap.wrapS = THREE.RepeatWrapping;
   this.tubeMaterial.bumpMap.wrapT = THREE.RepeatWrapping;
   this.tubeMaterial.bumpMap.repeat.set(30, 6);
-
-  this.tubeGeometry = new THREE.TubeGeometry(this.curve, 70, 0.02, 30, false);
-  this.tubeGeometry_o = this.tubeGeometry.clone();
-  var tubeMesh = new THREE.Mesh(this.tubeGeometry, this.tubeMaterial);
-
-  this.scene.add(tubeMesh);
 };
+
+Tunnel.prototype.advanceMaterial = _.throttle(function (shouldSwitch) {
+  if (shouldSwitch) {
+    var nextTexture = this.textures[this.currentTexture++ % this.textures.length];
+    this.setMaterial(nextTexture);
+    this.tubeMesh.material = this.tubeMaterial;
+  }
+}, 500);
 
 Scene.prototype.setMouseDown = function(setTo) {
   this.mouseDown = setTo;
@@ -216,6 +224,7 @@ Scene.prototype.updateJoystickValues = function() {
     this.addBurstParticle();
   }
   this.debugReload(gamepad.buttons[7].pressed);
+  this.tunnel.advanceMaterial(gamepad.buttons[10].pressed);
   this.tunnel.updateColor(gamepad.buttons[11].pressed);
 
   // input = [-1, -0.5,   0,      0.5, 1]
@@ -371,7 +380,7 @@ Boss.prototype.update = function(tunnel) {
   this.mesh.position.x = this.pos.x;
   this.mesh.position.y = this.pos.y;
   this.mesh.position.z = this.pos.z;
-}
+};
 
 
 function init() {
@@ -390,11 +399,11 @@ function init() {
 function loadObjects(callback) {
   var objects = {
     virus: {
-      url: 'img/demo4/virus.obj',
+      url: 'img/demo4/3d/virus.obj',
       loaded: false
     },
     cell: {
-      url: 'img/demo4/blood_cell.obj',
+      url: 'img/demo4/3d/blood_cell.obj',
       loaded: false
     }
   };
@@ -414,39 +423,43 @@ function loadObjects(callback) {
 }
 
 function loadTextures(callback) {
-  var textures = {
-    'microdots': {
-      url: 'img/demo1/microdotsPattern.jpg',
-      loaded: false
-    },
-    'microdotsBump': {
-      url: 'img/demo1/microdotsPatternBump.jpg',
-      loaded: false
-    },
-    'stone': {
-      url: 'img/demo1/stonePattern.jpg',
-      loaded: false
-    },
-    'stoneBump': {
-      url: 'img/demo1/stonePatternBump.jpg',
-      loaded: false
-    }
-  };
+  var textures = [{
+    name: 'microdots',
+    texture: 'img/demo1/microdotsPattern.jpg',
+    bump: 'img/demo1/microdotsPatternBump.jpg'
+  }, {
+    name: 'intestinesReal',
+    texture: 'img/demo4/intestinesRealPattern.jpg',
+    bump: 'img/demo4/intestinesRealBump.jpg'
+  }, {
+    name: 'intestinesYellow',
+    texture: 'img/demo4/intestinesYellowPattern.jpg',
+    bump: 'img/demo4/intestinesYellowBump.jpg'
+  }, {
+    name: 'intestinesRed',
+    texture: 'img/demo4/intestinesRedPattern.jpg',
+    bump: 'img/demo4/intestinesYellowBump.jpg'
+  },{
+    name: 'fatcells1',
+    texture: 'img/demo4/fatcells1Pattern.jpg',
+    bump: 'img/demo4/fatcells1Bump.jpg'
+  }];
 
-  var loader = new THREE.TextureLoader();
-  loader.crossOrigin = 'Anonymous';
-  // Load all textures
-  for (var name in textures) {
-    (function(name) {
-      loader.load(textures[name].url, function(texture) {
-        textures[name].loaded = true;
-        textures[name].texture = texture;
-        if (Object.values(textures).every(function(t) { return t.loaded; })) {
-          callback(textures);
-        }
-      });
-    })(name);
-  }
+  var manager = new THREE.LoadingManager();
+  textures.forEach(function (texture, idx) {
+    var tLoader = new THREE.TextureLoader(manager);
+    tLoader.load(texture.texture, function(t) {
+      textures[idx].texture = t;
+    });
+
+    var bLoader = new THREE.TextureLoader(manager);
+    bLoader.load(texture.bump, function(t) {
+      textures[idx].bump = t;
+    });
+  });
+
+  function returnTextures() { callback(textures); }
+  manager.onLoad = returnTextures;
 }
 
 window.onload = init;
