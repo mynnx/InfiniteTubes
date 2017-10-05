@@ -21,10 +21,16 @@ function Scene(objects, textures) {
 }
 
 Scene.prototype.init = function(objects) {
+  this.clock = new THREE.Clock();
   this.mouse = {
     position: new THREE.Vector2(ww * 0.5, wh * 0.7),
     ratio: new THREE.Vector2(0, 0),
     target: new THREE.Vector2(ww * 0.5, wh * 0.7)
+  };
+
+  this.laserTarget = {
+    x: 0.085,
+    y: 0.029
   };
 
   this.renderer = new THREE.WebGLRenderer({
@@ -49,6 +55,8 @@ Scene.prototype.init = function(objects) {
 
   this.addParticle();
   this.addBoss(objects.virus.object);
+  this.addLaser();
+  // this.laser.update(300);
 };
 
 Scene.prototype.handleEvents = function() {
@@ -78,6 +86,11 @@ Scene.prototype.addParticle = function() {
     this.particlesContainer.add(particle.mesh);
   }
 };
+
+Scene.prototype.addLaser = function() {
+  this.laser = new Laser(this.scene, this.laserTarget, this.camera);
+  this.scene.add(this.laser.laser);
+}
 
 function Tunnel(scene, textures) {
   this.scene = scene;
@@ -116,6 +129,7 @@ Tunnel.prototype.createMesh = function(texture) {
 
 Tunnel.prototype.setMaterial = function(texture) {
   this.tubeMaterial = new THREE.MeshStandardMaterial({
+    wireframe:true,
     side: THREE.BackSide,
     map: texture.texture,
     emissiveIntensity: 0.5,
@@ -162,6 +176,10 @@ Scene.prototype.onMouseMove = function(e) {
     this.mouse.target.x = e.touches[0].clientX;
     this.mouse.target.y = e.touches[0].clientY;
   }
+
+  this.laserTarget.x = (e.clientX / window.innerWidth) * 2 - 1;
+  this.laserTarget.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  console.log(this.laserTarget);
 
   this.tunnel.mouse.target = this.mouse.target;
 };
@@ -222,7 +240,7 @@ Scene.prototype.updateJoystickValues = function() {
 
   this.tunnel.setSpeed(-1 * gamepad.axes[6] + 1);
   if (gamepad.buttons[0].pressed) {
-    this.addBurstParticle();
+    // this.addLaser();
   }
   if (gamepad.buttons[11].pressed) {
     this.tunnel.updateColor();
@@ -286,11 +304,14 @@ Scene.prototype.addBurstParticle = _.throttle(function () {
 }, 20);
 
 Scene.prototype.render = function() {
+	var dt = this.clock.getDelta();
+
   this.updateJoystickValues();
   this.updateCameraPosition();
 
   this.tunnel.update();
   this.updateParticles();
+  this.laser && this.laser.update(dt);
   this.boss.update(this.tunnel);
 
   this.renderer.render(this.scene, this.camera);
@@ -347,6 +368,61 @@ Particle.prototype.update = function(tunnelSpeed, tunnelCurve) {
   this.mesh.rotation.x += this.rotate.x;
   this.mesh.rotation.y += this.rotate.y;
   this.mesh.rotation.z += this.rotate.z;
+};
+
+function Laser(scene, coords, camera) {
+  var laserRadius = Math.random() * 0.003 + 0.0003;
+  var beamLength = laserRadius * 2;
+  // var beamLength = 100;
+  // var laserRadius = 0.5;
+
+  var laserGeom = new THREE.CylinderGeometry(laserRadius, laserRadius, beamLength, 4);
+  laserGeom.applyMatrix(new THREE.Matrix4().makeTranslation(0, beamLength / 2, 0));
+  laserGeom.applyMatrix(new THREE.Matrix4().makeRotationX(Math.PI / 2));
+  var laserMat = new THREE.MeshPhongMaterial({
+    ambient : 0,
+    emissive : 0xff0000,
+    color : 0xff0000,
+    specular : 0x101010,
+    shininess: 20
+  });
+
+  this.time = 0;
+  this.active = true;
+
+  this.light = new THREE.PointLight( 0xff0000, 0, 300 );
+  this.laser = new THREE.Mesh(laserGeom, laserMat);
+  this.laser.position.copy(camera.position);
+
+  this.raycaster = new THREE.Raycaster();
+  this.raycaster.setFromCamera(coords, camera);
+
+  this.dir = new THREE.Vector3(0,0,0);
+  this.dir.copy(this.raycaster.ray.direction);
+
+  this.light.intensity = 1;
+
+  scene.add(this.laser);
+  this.laser.add(this.light); // ???
+}
+
+Laser.prototype.update = function (t) {
+  var laserVelocity = -0.5; // speed of laser beam
+  var newPos = new THREE.Vector3(0,0,0);
+  if (this.active) {
+    this.time += t;
+    newPos.copy(this.dir);
+    newPos.multiplyScalar(this.time * laserVelocity);
+    console.log(t, newPos)
+    this.laser.position.copy(newPos);
+    this.laser.lookAt(this.dir);
+
+    this.raycaster.set(this.laser.position, this.dir);
+
+    if (this.laser.position.z < 1000) {
+      // this.killLaser();
+    }
+  }
 };
 
 function Boss(object) {
