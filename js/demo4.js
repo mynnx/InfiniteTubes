@@ -434,10 +434,6 @@ function loadTextures(callback) {
     texture: 'img/demo4/intestinesYellowPattern.jpg',
     bump: 'img/demo4/intestinesYellowBump.jpg'
   }, {
-    name: 'intestinesRed',
-    texture: 'img/demo4/intestinesRedPattern.jpg',
-    bump: 'img/demo4/intestinesYellowBump.jpg'
-  },{
     name: 'fatcells1',
     texture: 'img/demo4/fatcells1Pattern.jpg',
     bump: 'img/demo4/fatcells1Bump.jpg'
