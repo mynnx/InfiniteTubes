@@ -3,7 +3,7 @@
 var ww = window.innerWidth;
 var wh = window.innerHeight;
 var isMobile = ww < 500;
-var WACKY_COLORS = [0x9effb8, 0x89aee1, 0xd46ce7, 0xe9f259, 0x7cf4d3];
+var WACKY_COLORS = [0xFFFF00, 0x14CCBD, 0xFF4088, 0x364BBD];
 
 function Scene(objects, textures) {
 
@@ -118,6 +118,7 @@ Tunnel.prototype.setMaterial = function(texture) {
   this.tubeMaterial = new THREE.MeshStandardMaterial({
     side: THREE.BackSide,
     map: texture.texture,
+    emissiveIntensity: 0.5,
     bumpMap: texture.bump,
     bumpScale: 0.0005
   });
@@ -223,9 +224,11 @@ Scene.prototype.updateJoystickValues = function() {
   if (gamepad.buttons[0].pressed) {
     this.addBurstParticle();
   }
+  if (gamepad.buttons[11].pressed) {
+    this.tunnel.updateColor();
+  }
   this.debugReload(gamepad.buttons[7].pressed);
   this.tunnel.advanceMaterial(gamepad.buttons[10].pressed);
-  this.tunnel.updateColor(gamepad.buttons[11].pressed);
 
   // input = [-1, -0.5,   0,      0.5, 1]
   // output = [0, vw / 4, vw / 2, 3vw/4, 1vw];
@@ -245,22 +248,18 @@ Scene.prototype.debugReload = (function() {
   };
 })();
 
-Tunnel.prototype.updateColor = _.throttle(function (shouldSwitch) {
+Tunnel.prototype.updateColor = _.throttle(function () {
   var availableColors = WACKY_COLORS.map(function (hex) {
-    var color = new THREE.Color(hex);
-    color.addScalar(-0.25);
-    return color;
+    return new THREE.Color(hex);
   });
-  if (shouldSwitch) {
-    var nextColor = availableColors[this.currentColor++ % availableColors.length];
-    TweenMax.to(this.tubeMaterial.color, 1, {
-      r: nextColor.r,
-      g: nextColor.g,
-      b: nextColor.b,
-      ease: Power2.easeInOut
-    });
-  }
-}, 500);
+  var nextColor = availableColors[++this.currentColor % availableColors.length];
+  TweenMax.to(this.tubeMaterial.emissive, 1, {
+    r: nextColor.r,
+    g: nextColor.g,
+    b: nextColor.b,
+    ease: Power2.easeInOut
+  });
+}, 1000, {trailing: false});
 
 Tunnel.prototype.setSpeed = function(speed) { this.speed = speed; };
 
@@ -311,7 +310,6 @@ function Particle(scene, burst) {
   }
   var mat = new THREE.MeshPhongMaterial({
     color: this.color,
-    // shading: THREE.FlatShading
   });
 
   // Blood cells are slightly different sizes and we also
