@@ -87,7 +87,7 @@ Scene.prototype.addParticle = function() {
 };
 
 Scene.prototype.addLaser = _.throttle(function () {
-  var laser = new Laser(this.scene, this.laserTarget, this.camera);
+  var laser = new Laser(this.scene, this.camera);
   this.laserContainer.push(laser);
   this.scene.add(laser.laser);
 }, 200, {trailing: false});
@@ -380,51 +380,31 @@ Particle.prototype.update = function(tunnelSpeed, tunnelCurve) {
   this.mesh.rotation.z += this.rotate.z;
 };
 
-function Laser(scene, coords, camera) {
+function Laser(scene, camera) {
   var laserRadius = 0.001;
   var beamLength = laserRadius * 50;
-  // var beamLength = 100;
-  // var laserRadius = 0.5;
 
   var laserGeom = new THREE.CylinderGeometry(laserRadius, laserRadius, beamLength, 20);
   laserGeom.applyMatrix(new THREE.Matrix4().makeTranslation(0, beamLength / 2, 0));
   laserGeom.applyMatrix(new THREE.Matrix4().makeRotationX(Math.PI / 2));
   var laserMat = new THREE.MeshPhongMaterial({
     ambient : 0,
-    emissive : 0xff0000,
-    color : 0xff0000,
-    specular : 0x101010,
-    shininess: 20
+    emissive : WACKY_COLORS[0],
+    emissiveIntensity: 0.5,
+    color : WACKY_COLORS[0]
   });
 
-  this.time = 0;
   this.active = true;
 
   this.laser = new THREE.Mesh(laserGeom, laserMat);
   this.laser.position.copy(camera.position);
-
-  this.raycaster = new THREE.Raycaster();
-  this.raycaster.setFromCamera(coords, camera);
-
-  this.dir = new THREE.Vector3(0,0,0);
-  this.dir.copy(this.raycaster.ray.direction);
-
-  scene.add(this.laser);
+  this.laser.position.z += 0.02;
 }
 
 Laser.prototype.update = function (t) {
-  var laserVelocity = 6; // speed of laser beam
-  var newPos = new THREE.Vector3(0,0,0);
   if (this.active) {
-    this.time += t;
-    newPos.copy(this.dir);
-    newPos.multiplyScalar(this.time * laserVelocity);
-    this.laser.position.copy(newPos);
-    this.laser.lookAt(this.dir);
-
-    this.raycaster.set(this.laser.position, this.dir);
-
-    if (this.laser.position.z > 2) {
+    this.laser.position.z += 0.01;
+    if (this.laser.position.z > 1) {
       this.active = false;
     }
   }
