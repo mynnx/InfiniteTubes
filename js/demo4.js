@@ -189,7 +189,6 @@ Scene.prototype.onMouseMove = function(e) {
 
   this.laserTarget.x = (e.clientX / window.innerWidth) * 2 - 1;
   this.laserTarget.y = -(e.clientY / window.innerHeight) * 2 + 1;
-  console.log(this.laserTarget);
 
   this.tunnel.mouse.target = this.mouse.target;
 };
@@ -401,8 +400,6 @@ function Laser(scene, coords, camera) {
   this.time = 0;
   this.active = true;
 
-  this.light = new THREE.PointLight( 0xff0000, 0, 0.1 );
-  this.light.intensity = 0.3;
   this.laser = new THREE.Mesh(laserGeom, laserMat);
   this.laser.position.copy(camera.position);
 
@@ -412,9 +409,7 @@ function Laser(scene, coords, camera) {
   this.dir = new THREE.Vector3(0,0,0);
   this.dir.copy(this.raycaster.ray.direction);
 
-
   scene.add(this.laser);
-  this.laser.add(this.light); // ???
 }
 
 Laser.prototype.update = function (t) {
