@@ -53,10 +53,9 @@ Scene.prototype.init = function(objects) {
   var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.8 );
   this.scene.add(directionalLight);
 
+  this.laserContainer = [];
   this.addParticle();
   this.addBoss(objects.virus.object);
-  this.addLaser();
-  // this.laser.update(300);
 };
 
 Scene.prototype.handleEvents = function() {
@@ -87,10 +86,22 @@ Scene.prototype.addParticle = function() {
   }
 };
 
-Scene.prototype.addLaser = function() {
-  this.laser = new Laser(this.scene, this.laserTarget, this.camera);
-  this.scene.add(this.laser.laser);
-}
+Scene.prototype.addLaser = _.throttle(function () {
+  var laser = new Laser(this.scene, this.laserTarget, this.camera);
+  this.laserContainer.push(laser);
+  this.scene.add(laser.laser);
+}, 200, {trailing: false});
+
+Scene.prototype.removeDeadLasers = function() {
+  var idx = this.laserContainer.length;
+  while(idx--) {
+    var laser = this.laserContainer[idx];
+    if (laser.active === false) {
+      this.scene.remove(laser.laser);
+      this.laserContainer.splice(idx, 1);
+    }
+  }
+};
 
 function Tunnel(scene, textures) {
   this.scene = scene;
@@ -129,7 +140,6 @@ Tunnel.prototype.createMesh = function(texture) {
 
 Tunnel.prototype.setMaterial = function(texture) {
   this.tubeMaterial = new THREE.MeshStandardMaterial({
-    wireframe:true,
     side: THREE.BackSide,
     map: texture.texture,
     emissiveIntensity: 0.5,
@@ -240,7 +250,7 @@ Scene.prototype.updateJoystickValues = function() {
 
   this.tunnel.setSpeed(-1 * gamepad.axes[6] + 1);
   if (gamepad.buttons[0].pressed) {
-    // this.addLaser();
+    this.addLaser();
   }
   if (gamepad.buttons[11].pressed) {
     this.tunnel.updateColor();
@@ -311,7 +321,8 @@ Scene.prototype.render = function() {
 
   this.tunnel.update();
   this.updateParticles();
-  this.laser && this.laser.update(dt);
+  this.laserContainer.map(function(l) { l.update(dt); });
+  this.removeDeadLasers();
   this.boss.update(this.tunnel);
 
   this.renderer.render(this.scene, this.camera);
@@ -371,12 +382,12 @@ Particle.prototype.update = function(tunnelSpeed, tunnelCurve) {
 };
 
 function Laser(scene, coords, camera) {
-  var laserRadius = Math.random() * 0.003 + 0.0003;
-  var beamLength = laserRadius * 2;
+  var laserRadius = 0.001;
+  var beamLength = laserRadius * 50;
   // var beamLength = 100;
   // var laserRadius = 0.5;
 
-  var laserGeom = new THREE.CylinderGeometry(laserRadius, laserRadius, beamLength, 4);
+  var laserGeom = new THREE.CylinderGeometry(laserRadius, laserRadius, beamLength, 20);
   laserGeom.applyMatrix(new THREE.Matrix4().makeTranslation(0, beamLength / 2, 0));
   laserGeom.applyMatrix(new THREE.Matrix4().makeRotationX(Math.PI / 2));
   var laserMat = new THREE.MeshPhongMaterial({
@@ -390,7 +401,8 @@ function Laser(scene, coords, camera) {
   this.time = 0;
   this.active = true;
 
-  this.light = new THREE.PointLight( 0xff0000, 0, 300 );
+  this.light = new THREE.PointLight( 0xff0000, 0, 0.1 );
+  this.light.intensity = 0.3;
   this.laser = new THREE.Mesh(laserGeom, laserMat);
   this.laser.position.copy(camera.position);
 
@@ -400,27 +412,25 @@ function Laser(scene, coords, camera) {
   this.dir = new THREE.Vector3(0,0,0);
   this.dir.copy(this.raycaster.ray.direction);
 
-  this.light.intensity = 1;
 
   scene.add(this.laser);
   this.laser.add(this.light); // ???
 }
 
 Laser.prototype.update = function (t) {
-  var laserVelocity = -0.5; // speed of laser beam
+  var laserVelocity = 6; // speed of laser beam
   var newPos = new THREE.Vector3(0,0,0);
   if (this.active) {
     this.time += t;
     newPos.copy(this.dir);
     newPos.multiplyScalar(this.time * laserVelocity);
-    console.log(t, newPos)
     this.laser.position.copy(newPos);
     this.laser.lookAt(this.dir);
 
     this.raycaster.set(this.laser.position, this.dir);
 
-    if (this.laser.position.z < 1000) {
-      // this.killLaser();
+    if (this.laser.position.z > 2) {
+      this.active = false;
     }
   }
 };
