@@ -250,6 +250,9 @@ Scene.prototype.updateJoystickValues = function() {
   if (gamepad.buttons[0].pressed) {
     this.addLaser();
   }
+  if (gamepad.buttons[2].pressed) {
+    this.addBurstParticle();
+  }
   if (gamepad.buttons[11].pressed) {
     this.tunnel.updateColor();
   }
