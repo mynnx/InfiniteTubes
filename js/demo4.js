@@ -71,7 +71,6 @@ Scene.prototype.handleEvents = function() {
 Scene.prototype.addBoss = function(object) {
   this.boss = new Boss(object);
   this.offset = new THREE.Vector3((Math.random() - 0.5) * 0.025, (Math.random() - 0.5) * 0.025, 0);
-  this.boss.percent = 0.1;
   this.scene.add(this.boss.mesh);
 };
 
@@ -254,6 +253,12 @@ Scene.prototype.updateJoystickValues = function() {
   if (gamepad.buttons[11].pressed) {
     this.tunnel.updateColor();
   }
+  if (gamepad.buttons[3].pressed) {
+    this.boss.move('backward');
+  }
+  if (gamepad.buttons[5].pressed) {
+    this.boss.move('forward');
+  }
   this.debugReload(gamepad.buttons[7].pressed);
   this.tunnel.advanceMaterial(gamepad.buttons[10].pressed);
 
@@ -411,36 +416,40 @@ Laser.prototype.update = function (t) {
 };
 
 function Boss(object) {
-  var radius = Math.random() * 0.003 + 0.0003;
-  var geom = object.children[0].geometry;
   var mat = new THREE.MeshPhongMaterial({
     color: new THREE.Color(WACKY_COLORS[Math.floor(Math.random()*WACKY_COLORS.length)])
-    // shading: THREE.FlatShading
   });
 
-  this.mesh = new THREE.Mesh(geom, mat);
+  var radius = 0.003;
   var scale = radius / 14;
+  var geom = object.children[0].geometry;
+  this.mesh = new THREE.Mesh(geom, mat);
   this.mesh.scale.set(scale, scale, scale);
-  this.mesh.position.set(0, 0, 0.55);
 
-  this.offset = new THREE.Vector3(0, 0, 0);
-  this.speed = Math.random() * 0.004 + 0.0002;
   this.rotate = new THREE.Vector3(-Math.random() * 0.1 + 0.01, 0, Math.random() * 0.01);
 
   this.pos = new THREE.Vector3(0, 0, 0);
+  this.percent = 100;
   return this;
 }
 
-// Boss.prototype = Particle.prototype;
 Boss.prototype.update = function(tunnel) {
-  this.percent += this.speed * (this.burst ? 1 : tunnel.speed);
-
-  this.pos = tunnel.curve.getPoint(1 - (tunnel.speed % 1)).add(this.offset);
+  // input: [0, 100]
+  // output: [0.2, 1]
+  var point = 0.2 + (((this.percent) / 100) * 0.8);
+  this.pos = tunnel.curve.getPoint(point);
   this.mesh.position.x = this.pos.x;
   this.mesh.position.y = this.pos.y;
   this.mesh.position.z = this.pos.z;
 };
 
+Boss.prototype.move = function(direction) {
+  if (direction === 'forward') {
+    this.percent = Math.min(this.percent + 0.2, 100);
+  } else if (direction === 'backward'){
+    this.percent = Math.max(this.percent - 0.2, 0);
+  }
+};
 
 function init() {
   var textures = null;
