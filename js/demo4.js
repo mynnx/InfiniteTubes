@@ -86,7 +86,7 @@ Scene.prototype.addParticle = function() {
 };
 
 Scene.prototype.addLaser = _.throttle(function () {
-  var laser = new Laser(this.scene, this.camera);
+  var laser = new Laser(this.scene, this.camera, this.boss.mesh, this.boss.onLaserHit.bind(this.boss));
   this.laserContainer.push(laser);
   this.scene.add(laser.laser);
 }, 200, {trailing: false});
@@ -388,7 +388,7 @@ Particle.prototype.update = function(tunnelSpeed, tunnelCurve) {
   this.mesh.rotation.z += this.rotate.z;
 };
 
-function Laser(scene, camera) {
+function Laser(scene, camera, target, onLaserHit) {
   var laserRadius = 0.001;
   var beamLength = laserRadius * 50;
 
@@ -396,13 +396,15 @@ function Laser(scene, camera) {
   laserGeom.applyMatrix(new THREE.Matrix4().makeTranslation(0, beamLength / 2, 0));
   laserGeom.applyMatrix(new THREE.Matrix4().makeRotationX(Math.PI / 2));
   var laserMat = new THREE.MeshPhongMaterial({
-    ambient : 0,
     emissive : WACKY_COLORS[0],
     emissiveIntensity: 0.5,
     color : WACKY_COLORS[0]
   });
 
   this.active = true;
+  this.target = target;
+  this.onLaserHit = onLaserHit;
+  this.raycaster = new THREE.Raycaster();
 
   this.laser = new THREE.Mesh(laserGeom, laserMat);
   this.laser.position.copy(camera.position);
@@ -412,6 +414,12 @@ function Laser(scene, camera) {
 Laser.prototype.update = function (t) {
   if (this.active) {
     this.laser.position.z += 0.01;
+    this.raycaster.set(this.laser.position, new THREE.Vector3(0, 0, 0.1));
+    var intersects = this.raycaster.intersectObject(this.target);
+    if (intersects.length) {
+      console.log(intersects[0])
+      this.onLaserHit();
+    }
     if (this.laser.position.z > 1) {
       this.active = false;
     }
@@ -432,7 +440,11 @@ function Boss(object) {
   this.rotate = new THREE.Vector3(-Math.random() * 0.1 + 0.01, 0, Math.random() * 0.01);
 
   this.pos = new THREE.Vector3(0, 0, 0);
-  this.percent = 100;
+  this.percent = 5;
+  this.state = {
+    dying: false,
+    hitCount: 0
+  }
   return this;
 }
 
@@ -453,6 +465,17 @@ Boss.prototype.move = function(direction) {
     this.percent = Math.max(this.percent - 0.2, 0);
   }
 };
+
+Boss.prototype.onLaserHit = function() {
+  this.state.hitCount++;
+  if (this.state.hitCount > 10) {
+    this.state.dying = true;
+  }
+  if (this.state.hitCount > 30) {
+    this.state.dead = true;
+  }
+  console.log(JSON.stringify(this.state))
+}
 
 function init() {
   var textures = null;
