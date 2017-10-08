@@ -21,7 +21,6 @@ function Scene(objects, textures) {
 }
 
 Scene.prototype.init = function(objects) {
-  this.clock = new THREE.Clock();
   this.mouse = {
     position: new THREE.Vector2(ww * 0.5, wh * 0.7),
     ratio: new THREE.Vector2(0, 0),
@@ -321,14 +320,12 @@ Scene.prototype.addBurstParticle = _.throttle(function () {
 }, 20);
 
 Scene.prototype.render = function() {
-	var dt = this.clock.getDelta();
-
   this.updateJoystickValues();
   this.updateCameraPosition();
 
   this.tunnel.update();
   this.updateParticles();
-  this.laserContainer.map(function(l) { l.update(dt); });
+  this.laserContainer.map(function(l) { l.update(); });
   this.removeDeadLasers();
   this.boss.update(this.tunnel);
 
@@ -411,13 +408,12 @@ function Laser(scene, camera, target, onLaserHit) {
   this.laser.position.z += 0.02;
 }
 
-Laser.prototype.update = function (t) {
+Laser.prototype.update = function () {
   if (this.active) {
     this.laser.position.z += 0.01;
     this.raycaster.set(this.laser.position, new THREE.Vector3(0, 0, 0.1));
     var intersects = this.raycaster.intersectObject(this.target);
     if (intersects.length) {
-      console.log(intersects[0])
       this.onLaserHit();
     }
     if (this.laser.position.z > 1) {
@@ -427,26 +423,37 @@ Laser.prototype.update = function (t) {
 };
 
 function Boss(object) {
-  var mat = new THREE.MeshPhongMaterial({
-    color: new THREE.Color(WACKY_COLORS[Math.floor(Math.random()*WACKY_COLORS.length)])
+  this.material = new THREE.MeshPhongMaterial({
+    color: new THREE.Color(WACKY_COLORS[Math.floor(Math.random()*WACKY_COLORS.length)]),
+    emissiveIntensity: 0,
   });
 
   var radius = 0.003;
   var scale = radius / 14;
   var geom = object.children[0].geometry;
-  this.mesh = new THREE.Mesh(geom, mat);
+  this.mesh = new THREE.Mesh(geom, this.material);
   this.mesh.scale.set(scale, scale, scale);
 
   this.rotate = new THREE.Vector3(-Math.random() * 0.1 + 0.01, 0, Math.random() * 0.01);
 
   this.pos = new THREE.Vector3(0, 0, 0);
   this.percent = 5;
-  this.state = {
-    dying: false,
-    hitCount: 0
-  }
+  this.animations = [];
+  this.status = {
+    health: 'HEALTHY', // 'CRITICAL', 'DYING', 'DEAD'
+    hitCount: 0,
+    deathShrinks: 0
+  };
   return this;
 }
+
+Boss.prototype.isDead = function() { return this.status.health === 'dead'; };
+Boss.prototype.cleanupDeadAnimations = function () {
+  this.animations = this.animations.filter(
+    function (a) { return a.isActive(); }
+  );
+  return Boolean(this.animations.length);
+};
 
 Boss.prototype.update = function(tunnel) {
   // input: [0, 100]
@@ -456,6 +463,24 @@ Boss.prototype.update = function(tunnel) {
   this.mesh.position.x = this.pos.x;
   this.mesh.position.y = this.pos.y;
   this.mesh.position.z = this.pos.z;
+
+  var isAnimating = this.cleanupDeadAnimations();
+  if (this.status.health === 'CRITICAL') {
+    if (!isAnimating) {
+      this.animations.push(
+        this.animateRotateRandom(),
+        this.animatePulseColors()
+      );
+    }
+  } else if (this.status.health === 'DYING') {
+    if (!isAnimating) {
+      this.animations.push(
+        this.animateRotateRandom().repeat(100),
+        this.animatePulseColors().repeat(100),
+        this.animateShrinkToNothing()
+      );
+    }
+  }
 };
 
 Boss.prototype.move = function(direction) {
@@ -466,16 +491,63 @@ Boss.prototype.move = function(direction) {
   }
 };
 
+Boss.prototype.animateShrinkToNothing = function() {
+  return TweenMax.to(this.mesh.scale, 8, {
+    x: 0,
+    y: 0,
+    z: 0,
+    ease: window.RoughEase.ease.config({
+      template: window.Sine.easeOut,
+      strength: 2,
+      points: 50,
+      taper: 'out',
+      randomize: false,
+      clamp: false
+    })
+  });
+};
+
+Boss.prototype.animateRotateRandom = function() {
+  function randomRotation(amt) {
+    return amt + Math.random()* 2 * Math.PI;
+  }
+  return TweenMax.to(this.mesh.rotation, 0.2, {
+    x: randomRotation(this.mesh.rotation.x),
+    y: randomRotation(this.mesh.rotation.y),
+    z: randomRotation(this.mesh.rotation.z),
+    ease: Power2.easeInOut
+  });
+};
+
+Boss.prototype.animatePulseColors = function() {
+  var nextColor = new THREE.Color(WACKY_COLORS[Math.floor(Math.random()*WACKY_COLORS.length)]);
+  return TweenMax.to(this.material.emissive, 0.2, {
+    r: nextColor.r,
+    g: nextColor.g,
+    b: nextColor.b,
+    ease: Power2.easeInOut
+  });
+};
+
 Boss.prototype.onLaserHit = function() {
-  this.state.hitCount++;
-  if (this.state.hitCount > 10) {
-    this.state.dying = true;
+  this.status.hitCount++;
+  if (this.status.hitCount > 12) {
+    this.status.health = 'DYING';
+  } else if (this.status.hitCount >= 10) {
+    this.material.emissiveIntensity += 0.3;
+    this.status.health = 'CRITICAL';
   }
-  if (this.state.hitCount > 30) {
-    this.state.dead = true;
-  }
-  console.log(JSON.stringify(this.state))
-}
+  var isAnimating = this.cleanupDeadAnimations();
+  if (isAnimating) return;
+
+  this.animateRotateRandom();
+  TweenMax.to(this.mesh.scale, 0.1, {
+    x: this.mesh.scale.x - (this.mesh.scale.x / 2),
+    y: this.mesh.scale.y - (this.mesh.scale.y / 2),
+    z: this.mesh.scale.z - (this.mesh.scale.z / 2),
+    ease: Power2.easeInOut
+  }).repeat(1).yoyo(true);
+};
 
 function init() {
   var textures = null;
