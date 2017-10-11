@@ -21,15 +21,11 @@ function Scene(objects, textures) {
 }
 
 Scene.prototype.init = function(objects) {
+  this.isEndGame = false;
   this.mouse = {
     position: new THREE.Vector2(ww * 0.5, wh * 0.7),
     ratio: new THREE.Vector2(0, 0),
     target: new THREE.Vector2(ww * 0.5, wh * 0.7)
-  };
-
-  this.laserTarget = {
-    x: 0.085,
-    y: 0.029
   };
 
   this.renderer = new THREE.WebGLRenderer({
@@ -78,7 +74,7 @@ Scene.prototype.addParticle = function() {
   this.particlesContainer = new THREE.Object3D();
   this.scene.add(this.particlesContainer);
   for (var i = 0; i < (isMobile ? 70 : 150); i++) {
-    var particle = new Particle(this.scene);
+    var particle = new Particle(this.scene, this.isEndGame);
     this.particles.push(particle);
     this.particlesContainer.add(particle.mesh);
   }
@@ -184,9 +180,6 @@ Scene.prototype.onMouseMove = function(e) {
     this.mouse.target.x = e.touches[0].clientX;
     this.mouse.target.y = e.touches[0].clientY;
   }
-
-  this.laserTarget.x = (e.clientX / window.innerWidth) * 2 - 1;
-  this.laserTarget.y = -(e.clientY / window.innerHeight) * 2 + 1;
 
   this.tunnel.mouse.target = this.mouse.target;
 };
@@ -327,8 +320,16 @@ Scene.prototype.render = function() {
   this.updateParticles();
   this.laserContainer.map(function(l) { l.update(); });
   this.removeDeadLasers();
-  this.boss.update(this.tunnel);
-
+  if (this.boss && !this.boss.isDead()) {
+    this.boss.update(this.tunnel);
+  } else if (!this.isEndGame && this.boss.isDead()) {
+    this.scene.remove(this.boss.mesh);
+    this.scene.remove(this.particlesContainer);
+    this.isEndGame = true;
+    this.addParticle();
+  } else {
+    this.tunnel.updateColor();
+  }
   this.renderer.render(this.scene, this.camera);
   window.requestAnimationFrame(this.render.bind(this));
 };
@@ -437,7 +438,7 @@ function Boss(object) {
   this.rotate = new THREE.Vector3(-Math.random() * 0.1 + 0.01, 0, Math.random() * 0.01);
 
   this.pos = new THREE.Vector3(0, 0, 0);
-  this.percent = 5;
+  this.percent = 100;
   this.animations = [];
   this.status = {
     health: 'HEALTHY', // 'CRITICAL', 'DYING', 'DEAD'
@@ -447,7 +448,8 @@ function Boss(object) {
   return this;
 }
 
-Boss.prototype.isDead = function() { return this.status.health === 'dead'; };
+Boss.prototype.die = function() { this.status.health = 'DEAD'; };
+Boss.prototype.isDead = function() { return this.status.health === 'DEAD'; };
 Boss.prototype.cleanupDeadAnimations = function () {
   this.animations = this.animations.filter(
     function (a) { return a.isActive(); }
@@ -503,7 +505,8 @@ Boss.prototype.animateShrinkToNothing = function() {
       taper: 'out',
       randomize: false,
       clamp: false
-    })
+    }),
+    onComplete: this.die.bind(this)
   });
 };
 
@@ -538,7 +541,7 @@ Boss.prototype.onLaserHit = function() {
     this.status.health = 'CRITICAL';
   }
   var isAnimating = this.cleanupDeadAnimations();
-  if (isAnimating) return;
+  if (isAnimating && this.status.health !== 'CRITICAL') return;
 
   this.animateRotateRandom();
   TweenMax.to(this.mesh.scale, 0.1, {
