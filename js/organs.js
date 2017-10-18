@@ -28,16 +28,17 @@ function init(objects) {
 
   group = new THREE.Group();
 
-  for (var i = 0; i < 1000; i ++) {
+  for (var i = 0; i < 1500; i ++) {
     var whichObject = pickRandom(objects);
     var mesh = new THREE.Mesh(whichObject.geometry, material);
+    var scale = whichObject.scale  * (Math.random() * 2 + 1);
     mesh.position.x = Math.random() * 2000 - 1000;
     mesh.position.y = Math.random() * 2000 - 1000;
     mesh.position.z = Math.random() * 2000 - 1000;
 
     mesh.rotation.x = Math.random() * 2 * Math.PI;
     mesh.rotation.y = Math.random() * 2 * Math.PI;
-    mesh.scale.set(whichObject.scale, whichObject.scale, whichObject.scale);
+    mesh.scale.set(scale, scale, scale);
 
     mesh.matrixAutoUpdate = false;
     mesh.updateMatrix();
@@ -83,6 +84,16 @@ function animate() {
   stats.update();
 }
 
+var debugReload = (function() {
+  var hasBeenFalse = false;
+  return function(shouldReload) {
+    hasBeenFalse = hasBeenFalse || shouldReload === false;
+    if (shouldReload && hasBeenFalse) {
+      document.location.reload();
+    }
+  };
+})();
+
 function getGamepadValues() {
   var gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads : []);
   if (!gamepads[0]) {
@@ -90,6 +101,8 @@ function getGamepadValues() {
   }
 
   var gamepad = gamepads[0];
+
+  debugReload(gamepad.buttons[0].pressed);
   return {
     axes: {
       x: gamepad.axes[0],
