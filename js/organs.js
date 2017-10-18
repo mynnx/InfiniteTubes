@@ -83,17 +83,39 @@ function animate() {
   stats.update();
 }
 
-function render() {
-  var time = Date.now() * 0.001;
+function getGamepadValues() {
+  var gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads : []);
+  if (!gamepads[0]) {
+    return null;
+  }
 
+  var gamepad = gamepads[0];
+  return {
+    axes: {
+      x: gamepad.axes[0],
+      y: gamepad.axes[1],
+      z: gamepad.axes[5]
+    }
+  };
+}
+
+function render() {
+  var gamepad = getGamepadValues();
+  if (gamepad) {
+    camera.position.x += ((gamepad.axes.x * window.innerWidth * 5) - camera.position.x) * .005;
+    camera.position.y += ((gamepad.axes.y * window.innerHeight * 5) - camera.position.y) * .005;
+  } else {
+    camera.position.x += (mouseX - camera.position.x) * .05;
+    camera.position.y += (-mouseY - camera.position.y) * .05;
+  }
+  // console.log(camera.position.x, camera.position.y)
+
+  camera.lookAt(scene.position);
+
+  var time = Date.now() * 0.001;
   var rx = Math.sin(time * 0.7) * 0.5,
     ry = Math.sin(time * 0.3) * 0.5,
     rz = Math.sin(time * 0.2) * 0.5;
-
-  camera.position.x += (mouseX - camera.position.x) * .05;
-  camera.position.y += (-mouseY - camera.position.y) * .05;
-
-  camera.lookAt(scene.position);
 
   group.rotation.x = rx;
   group.rotation.y = ry;
@@ -106,7 +128,7 @@ function loadObjects(callback) {
   var objects = [
     {
       name: 'heart',
-      url: '3d/HeartSimple.obj',
+      url: '3d/heartSimple2.obj',
       scale: 6
     }, {
       name: 'hand',
