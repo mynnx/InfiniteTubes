@@ -39,7 +39,6 @@ Scene.prototype.init = function(objects) {
   this.camera.position.z = 0.35;
 
   this.scene = new THREE.Scene();
-  this.scene.fog = new THREE.Fog(0x000000, 0.05, 1.6);
 
   var light = new THREE.HemisphereLight(0xe9eff2, 0x01010f, 1);
   this.scene.add(light);
@@ -255,6 +254,7 @@ Scene.prototype.updateJoystickValues = function() {
     this.boss.move('forward');
   }
   this.debugReload(gamepad.buttons[7].pressed);
+  this.switchToOtherSimulation(gamepad.buttons[6].pressed);
   this.tunnel.advanceMaterial(gamepad.buttons[10].pressed);
 
   // input = [-1, -0.5,   0,      0.5, 1]
@@ -271,6 +271,16 @@ Scene.prototype.debugReload = (function() {
     hasBeenFalse = hasBeenFalse || shouldReload === false;
     if (shouldReload && hasBeenFalse) {
       document.location.reload();
+    }
+  };
+})();
+
+Scene.prototype.switchToOtherSimulation = (function() {
+  var hasBeenFalse = false;
+  return function(shouldReload) {
+    hasBeenFalse = hasBeenFalse || shouldReload === false;
+    if (shouldReload && hasBeenFalse) {
+      document.location = '/organs.html';
     }
   };
 })();

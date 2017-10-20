@@ -94,6 +94,17 @@ var debugReload = (function() {
   };
 })();
 
+var switchToOtherSimulation = (function() {
+  var hasBeenFalse = false;
+  return function(shouldReload) {
+    hasBeenFalse = hasBeenFalse || shouldReload === false;
+    if (shouldReload && hasBeenFalse) {
+      document.location = '/index.html';
+    }
+  };
+})();
+
+
 function getGamepadValues() {
   var gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads : []);
   if (!gamepads[0]) {
@@ -103,6 +114,7 @@ function getGamepadValues() {
   var gamepad = gamepads[0];
 
   debugReload(gamepad.buttons[0].pressed);
+  switchToOtherSimulation(gamepad.buttons[6].pressed);
   return {
     axes: {
       x: gamepad.axes[0],
@@ -164,9 +176,25 @@ function loadObjects(callback) {
       url: '3d/footSimple.obj',
       scale: 8
     }, {
+      name: 'innerEar',
+      url: '3d/innerEar.obj',
+      scale: 5
+    }, {
+      name: 'nose',
+      url: '3d/nose.obj',
+      scale: 9
+    }, {
+      name: 'lungs',
+      url: '3d/lungs.obj',
+      scale: 9
+    }, {
+      name: 'tubulus',
+      url: '3d/tubulus.obj',
+      scale: 15
+    }, {
       name: 'brain',
       url: '3d/brainSimple5.obj',
-      scale: 2
+      scale: 1
     }, {
       name: 'cell',
       url: 'img/demo4/3d/blood_cell.obj',
